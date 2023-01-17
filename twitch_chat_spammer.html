@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <title>
+    Twitch chat spammer
+  </title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-GLhlTQ8iRABdZLl6O3oVMWSktQOp6b7In1Zl3/Jr59b6EGGoI1aFkw7cmDA6j6gD" crossorigin="anonymous">
+  <script src="https://cdn.jsdelivr.net/gh/tmijs/cdn/latest/tmi.min.js"></script>
+  <script>
+    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      document.getElementsByTagName("html")[0].setAttribute("data-bs-theme", "dark")
+    }
+  </script>
+  <style>
+    @keyframes pb_animation {
+      0% {
+        width: 0px;
+      }
+
+      100% {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <main>
+    <div class="container py-4">
+      <header class="pb-3 mb-4 border-bottom">
+        <p class="d-flex align-items-center text-decoration-none">
+          <span class="fs-4">Twitch chat spammer <span class="badge bg-primary rounded-pill"> <i>by
+                @skidraw400</i></span></span>
+        </p>
+      </header>
+      <div class="p-5 mb-4 rounded-3  h-75" style="background-color: rgba(109, 109, 109, 0.07);">
+        <div class="row">
+          <div class="col">
+            <h1 class="display-5 fw-bold">Configure</h1>
+            <form>
+              <label class="form-label">Your <b class="text-danger">target</b> channel</label>
+              <div class="input-group mb-3">
+                <span class="input-group-text" id="basic-addon1">twitch.tv/</span>
+                <input type="text" id="i_target" class="form-control" placeholder="username" aria-label="username"
+                  aria-describedby="basic-addon1">
+              </div>
+
+              <label class="form-label">Write each message in new line</label>
+              <div class="input-group">
+                <span class="input-group-text">Messages to send</span>
+                <textarea id="i_messages" class="form-control" aria-label="With textarea"></textarea>
+              </div> <br>
+
+              <label class="form-label">Delay between each message</label>
+              <div class="input-group mb-3">
+                <input id="i_delay" type="number" class="form-control" placeholder="Delay" aria-label="Delay"
+                  aria-describedby="basic-addon2" value="80">
+                <span class="input-group-text" id="basic-addon2">seconds</span>
+              </div>
+
+              <label class="form-label"><b>Your </b> channel name</label>
+              <div class="input-group mb-3">
+                <span class="input-group-text" id="basic-addon3">twitch.tv/</span>
+                <input id="i_username" type="text" class="form-control" placeholder="username" aria-label="sername"
+                  aria-describedby="basic-addon3">
+              </div>
+
+              <label class="form-label">Your oauth token</label>
+              <a class="btn btn-outline-info btn-sm" href="https://twitchapps.com/tmi/" target=”_blank”>Get on
+                twitchapps.com/tmi/</a>
+              <div class="input-group mb-3">
+                <input id="i_oauth" type="password" class="form-control" placeholder="OAUTH:XXXXXXXX..."
+                  aria-label="oauth" aria-describedby="basic-addon1">
+              </div>
+
+              <p>
+              <div id="progress_container" class="progress">
+                <div style="width: 100%; animation-name:pb_animation; animation-duration: 0.5s;">
+                  <div class="progress-bar progress-bar-striped bg-secondary" style="width: 100%;" role="progressbar"
+                    aria-valuemin="0" aria-valuemax="100">Click connect to start</div>
+                </div>
+              </div>
+              </p>
+
+              <button class="btn btn-success btn-lg" id="connection_button" onclick="button_clicked()"
+                type="button">Connect</button>&nbsp;
+              <button type="button" id="messages_counter" class="btn btn-outline-secondar btn-lg" disabled>You sent 0
+                messages</button>
+            </form>
+          </div>
+          <div class="col" id="output-div" style="display: none;">
+            <div>
+              <h1 class="display-5 fw-bold">Chat</h1>
+              <input type="checkbox" id="others_checkbox" onclick="hideothers()">
+              Do not receive other messages (improving performance)
+            </div>
+            <div style="height: 500px; overflow-y: scroll;">
+              <ul class="list-group" id="chat-output">
+              </ul>
+            </div>
+          </div>
+        </div>
+        <div class="row">
+          <footer class="pt-3 mt-4 text-muted border-top" id="year"></footer>
+          <script>
+            document.getElementById("year").innerHTML = "Loaded: " + new Date() + " (System time)";
+          </script>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    i_target = document.getElementById("i_target")
+    i_oauth = document.getElementById("i_oauth")
+    i_username = document.getElementById("i_username")
+    i_messages = document.getElementById("i_messages")
+    i_delay = document.getElementById("i_delay")
+    progress_container = document.getElementById("progress_container")
+    connection_button = document.getElementById("connection_button")
+    chat_output_div = document.getElementById("output-div")
+    chat_output = document.getElementById("chat-output")
+    messages_counter = document.getElementById("messages_counter")
+
+    var u_target
+    var u_messages
+    var u_delay
+    var u_user
+    var u_oauth
+
+
+    // spamming interval
+    var spammer;
+
+    var client = new tmi.Client({
+      channels: []
+    });
+
+    var connection_switch = 0
+    function button_clicked() {
+      if (connection_switch == 0) {
+        connection_switch = 1
+        connection()
+      } else {
+        connection_switch = 0
+        disconnection()
+      }
+    }
+
+    function connection() {
+      update_client()
+      console.log("Starting connection")
+      connection_button.innerHTML = "Disconnect"
+      connection_button.setAttribute("class", "btn btn-danger btn-lg")
+      chat_output_div.style.display = 'grid';
+      setupSendMessage()
+      client.connect()
+      progress_container.innerHTML = `<div style="width: 100%; animation-name:pb_animation; animation-duration: ${u_delay / 1000}s;"><div class="progress-bar bg-warning progress-bar-striped progress-bar-animated" style="width: 100%;" role="progressbar" aria-valuemin="0" aria-valuemax="100">&nbsp;</div></div>`
+    }
+
+    function disconnection() {
+      console.log("Starting disconnection")
+      connection_button.innerHTML = "Update settings and connect"
+      connection_button.setAttribute("class", "btn btn-success btn-lg")
+      clearInterval(spammer)
+      client.disconnect()
+      progress_container.innerHTML = `<div class="progress-bar progress-bar-striped bg-danger" style="width: 100%; animation-name:pb_animation; animation-duration: 0.5s;" role="progressbar" aria-valuemin="0" aria-valuemax="100">Stopped</div>`
+    }
+
+    function update_client() {
+      u_target = i_target.value;
+      u_delay = i_delay.value * 1000
+      u_user = i_username.value
+      u_oauth = i_oauth.value
+      console.log(u_delay)
+      message_text = i_messages.value
+      tempmessages = message_text.split(/\r?\n/)
+      u_messages = []
+      for (var i = 0; i < tempmessages.length; i++) {
+        if (tempmessages[i]) {
+          u_messages.push(tempmessages[i]);
+        }
+      }
+      last_sent = 0
+      console.log(`Updating client, channel: ${u_target}`)
+      client = new tmi.Client({
+        options: { debug: true },
+        identity: {
+          username: u_user,
+          password: u_oauth
+        },
+        channels: [u_target]
+      });
+      client.on('message', (channel, tags, message, self) => {
+        onmessage(channel, tags, message, self)
+      });
+
+      console.log("Array of messages to send: " + u_messages)
+    }
+
+    var hide_others = 0
+    function hideothers() {
+      if (hide_others == 0) {
+        hide_others = 1
+      } else {
+        hide_others = 0
+      }
+    }
+
+    var your_messages = 0
+    var chat_count = 0
+    function onmessage(channel, tags, message, self) {
+      if (tags['display-name'] == i_username.value) {
+        your_messages += 1
+        messages_counter.innerHTML = "You sent " + your_messages + " messages"
+      }
+      if ((hide_others == 1 && tags['display-name'] == i_username.value) || hide_others == 0) {
+        let currentTime = new Date().toJSON().slice(11, 19);
+        temp_msg_li = `<li class="list-group-item"> <span class="badge bg-secondary rounded-pill">${tags['display-name']}</span> <div class="ms-2 me-auto"> <div> ${message} </div> <code> ${currentTime} (UTC)</code> </div> </li>`
+        if (chat_count % 150 == 0) {
+          chat_output.innerHTML = temp_msg_li
+        } else {
+          chat_output.innerHTML = temp_msg_li + chat_output.innerHTML
+        }
+        chat_count += 1
+      }
+    }
+
+    var messages = []
+    function setupSendMessage() {
+      spammer = setInterval(function () {
+        sendMessage()
+      }, u_delay);
+    }
+
+    last_sent = 0
+    async function sendMessage() {
+      if (u_messages.length > 0) {
+        if (last_sent == u_messages.length) {
+          last_sent = 0
+        }
+        progress_container.innerHTML = ""
+        console.log("trying to send: " + u_messages[last_sent])
+        client.say(i_target.value, u_messages[last_sent])
+        last_sent += 1
+        progress_container.innerHTML = `<div style="width: 100%; animation-name:pb_animation; animation-duration: ${u_delay / 1000}s;"><div class="progress-bar bg-success progress-bar-striped progress-bar-animated" style="width: 100%;" role="progressbar" aria-valuemin="0" aria-valuemax="100">&nbsp;</div></div>`
+      }
+    }
+
+  </script>
+
+</body>
+
+</html>
