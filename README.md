@@ -1,7 +1,7 @@
 # twitch_chat_spammer
 Simple, beautiful and portable twitch chat spammer, with chat preview. Please use responsibly
 ## Usage
-Just download [html file](https://github.com/skidraw400/twitch_chat_spammer/blob/main/twitch_chat_spammer.html) and run it on your pc. Using [tmi.js](https://github.com/tmijs/tmi.js/) library.
+Just download [html file](https://raw.githubusercontent.com/skidraw400/twitch_chat_spammer/main/twitch_chat_spammer.html) and run it on your pc. Using [tmi.js](https://github.com/tmijs/tmi.js/) library.
 
 ![screenshot 2](https://github.com/skidraw400/twitch_chat_spammer/blob/main/screenshot_2.png?raw=true)
 
